@@ -1,0 +1,931 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="May Club">
+<meta name="theme-color" content="#eef2fd">
+<title>May Club · 结单小票机</title>
+<style>
+  :root{
+    --bg:#eef2fd; --card:#fff; --line:#dbe2f6; --line-2:#c7d2f1;
+    --blue:#8099e2; --blue-d:#5a6fb4; --ink:#3d4568; --muted:#8a91ad;
+    --pink:#e7889f; --ok:#5aa98a; --r:16px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;background:var(--bg);color:var(--ink);
+    font:14px/1.5 -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif}
+  button,input,select{font:inherit;color:inherit}
+  .wrap{max-width:520px;margin:0 auto;padding:12px 14px calc(92px + env(safe-area-inset-bottom))}
+  header.top{display:flex;align-items:center;gap:10px;padding:calc(10px + env(safe-area-inset-top)) 16px 6px;max-width:520px;margin:0 auto}
+  .top .mono{width:40px;height:40px;border-radius:50%;background:#fff;border:1.5px dashed var(--line-2);display:grid;place-items:center;font-weight:700;color:var(--blue-d);overflow:hidden;flex:none}
+  .top .mono img{width:100%;height:100%;object-fit:cover}
+  .top h1{margin:0;font-size:18px;letter-spacing:.04em}
+  .top p{margin:0;font-size:12px;color:var(--muted)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin:0 0 12px;box-shadow:0 2px 10px rgba(90,111,180,.06)}
+  .card h2{margin:0 0 10px;font-size:15px;display:flex;align-items:center;gap:8px}
+  .card h2::before{content:"";width:4px;height:14px;border-radius:2px;background:var(--blue)}
+  .card h2 small{margin-left:auto;font-weight:400;color:var(--muted);font-size:12px}
+  label{display:block;font-size:12px;color:var(--muted);margin:0 0 8px}
+  .in{display:block;width:100%;margin-top:3px;padding:9px 11px;border:1px solid var(--line);border-radius:11px;background:#fbfcff;outline:none;min-width:0}
+  .in:focus{border-color:var(--blue);background:#fff}
+  .g2{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
+  .g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0 8px}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 14px;border-radius:12px;border:1px solid var(--line-2);background:#fff;cursor:pointer}
+  .btn.pri{background:var(--blue-d);border-color:var(--blue-d);color:#fff}
+  .btn.ok{background:var(--ok);border-color:var(--ok);color:#fff}
+  .btn.dash{border-style:dashed;width:100%}
+  .btn.warn{color:#c4566f;border-color:#f1c3cf}
+  .btn.sm{padding:6px 10px;font-size:13px;border-radius:10px}
+  .btn:disabled{opacity:.45}
+  .row{display:flex;gap:8px;flex-wrap:wrap}
+  .row>.btn{flex:1}
+  .hint{font-size:12px;color:var(--muted);margin:4px 0 0}
+  .hint.bad{color:#c4566f}
+  fieldset{border:0;margin:0;padding:0;min-width:0}
+  fieldset:disabled .in{background:#f3f4f9;color:var(--muted)}
+
+  /* 明细行 */
+  .ln{border:1px dashed var(--line-2);border-radius:13px;padding:10px;margin:0 0 10px;background:#fcfdff}
+  .ln-h{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .ln-h b{font-size:12px;color:#fff;background:var(--blue);border-radius:8px;padding:0 7px}
+  .ln-t{flex:1;font-weight:600;font-size:13px}
+  .ln-x{border:0;background:#fde9ee;color:#c4566f;width:26px;height:26px;border-radius:50%;cursor:pointer}
+  .ln-sum{margin-top:3px;padding:9px 0;font-weight:700;color:var(--blue-d)}
+  .sumtbl{width:100%;border-collapse:collapse}
+  .sumtbl td{padding:5px 0}
+  .sumtbl td:last-child{text-align:right;font-weight:600}
+  .big{font-size:20px;color:var(--blue-d)}
+  .pill{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:#e4f4ee;color:var(--ok)}
+  .chk{display:flex;align-items:center;gap:6px;color:var(--ink);font-size:13px;margin:6px 0}
+  .chk input{width:17px;height:17px;accent-color:var(--blue-d)}
+
+  /* 底部导航 */
+  nav.bar{position:fixed;left:0;right:0;bottom:0;background:rgba(255,255,255,.94);backdrop-filter:blur(10px);border-top:1px solid var(--line);display:flex;justify-content:center;padding:6px 0 calc(6px + env(safe-area-inset-bottom));z-index:20}
+  nav.bar button{flex:1;max-width:130px;border:0;background:none;padding:4px 0;color:var(--muted);font-size:12px;cursor:pointer}
+  nav.bar button i{display:block;font-style:normal;font-size:19px;line-height:1.3}
+  nav.bar button.on{color:var(--blue-d);font-weight:600}
+  .tab{display:none}.tab.on{display:block}
+
+  /* 价格表选择 */
+  .mask{position:fixed;inset:0;background:rgba(40,50,90,.35);z-index:30;display:none}
+  .mask.on{display:block}
+  .sheet{position:fixed;left:0;right:0;bottom:0;max-height:82vh;background:#fff;border-radius:20px 20px 0 0;z-index:31;transform:translateY(105%);transition:transform .22s;display:flex;flex-direction:column;max-width:520px;margin:0 auto}
+  .sheet.on{transform:none}
+  .sheet-h{display:flex;align-items:center;padding:14px 16px 8px}
+  .sheet-h h3{margin:0;font-size:16px;flex:1}
+  .zones{display:flex;gap:6px;padding:0 16px 8px;overflow-x:auto}
+  .zones button{flex:none;border:1px solid var(--line-2);background:#fff;border-radius:999px;padding:5px 14px;cursor:pointer}
+  .zones button.on{background:var(--blue-d);border-color:var(--blue-d);color:#fff}
+  .sheet-b{overflow:auto;padding:0 16px calc(16px + env(safe-area-inset-bottom))}
+  .pk{border-bottom:1px dashed var(--line);padding:10px 0}
+  .pk-n{font-weight:600;margin-bottom:6px}
+  .pk-n small{font-weight:400;color:var(--muted);margin-left:6px}
+  .pk-o{display:flex;gap:6px;flex-wrap:wrap}
+  .pk-o button{border:1px solid var(--line-2);background:#f7f9ff;border-radius:10px;padding:6px 10px;cursor:pointer}
+  .pk-o button b{color:var(--blue-d)}
+  .znote{font-size:12px;color:var(--muted);background:#f5f7fe;border-radius:10px;padding:6px 10px;margin:4px 0 2px}
+
+  /* 老板 */
+  .boss{border:1px solid var(--line);border-radius:14px;padding:10px 12px;margin:0 0 10px;background:#fcfdff}
+  .boss-h{display:flex;align-items:baseline;gap:8px;margin-bottom:8px}
+  .boss-h b{font-size:15px;flex:1}
+  .boss-h span{font-size:18px;font-weight:700;color:var(--blue-d)}
+  .boss-h span.neg{color:#c4566f}
+  .boss .row .btn{padding:7px 0;font-size:13px}
+  .log{margin-top:8px;font-size:12px;color:var(--muted);border-top:1px dashed var(--line);padding-top:6px}
+  .log div{display:flex;justify-content:space-between;gap:8px;padding:2px 0}
+
+  /* toast + 存图 */
+  #toast{position:fixed;left:50%;top:18%;transform:translate(-50%,-10px);background:rgba(50,60,100,.92);color:#fff;padding:9px 16px;border-radius:12px;font-size:13px;opacity:0;pointer-events:none;transition:.2s;z-index:60;max-width:80vw;text-align:center}
+  #toast.on{opacity:1;transform:translate(-50%,0)}
+  #saveView{position:fixed;inset:0;background:rgba(30,36,64,.86);z-index:50;display:none;flex-direction:column;align-items:center;justify-content:center;padding:20px}
+  #saveView.on{display:flex}
+  #saveView img{max-width:100%;max-height:70vh;border-radius:8px;box-shadow:0 8px 30px rgba(0,0,0,.3)}
+  #saveView p{color:#fff;font-size:13px;margin:12px 0}
+  #saveView .row{width:100%;max-width:360px}
+
+  /* ================= 小票 ================= */
+  .stage{overflow-x:auto;padding:4px 0 8px;margin:0 -14px}
+  #slipWrap{width:360px;margin:0 auto;padding:10px;background:#e6ecfb}
+  .slip{width:340px;background:#fbfcff;color:#46507a;font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif}
+  .edge{height:10px;background-repeat:repeat-x;background-size:20px 10px}
+  .slip-b{padding:12px 12px 14px}
+  .frame{border:1.5px dashed #c5d0f0;border-radius:14px;padding:16px 16px 14px;position:relative}
+  .s-head{text-align:center}
+  .s-logo{width:58px;height:58px;margin:0 auto 6px;border-radius:50%;border:2px solid #c5d0f0;background:#eef2fd;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:19px;color:#6c80c6;overflow:hidden;letter-spacing:.02em}
+  .s-logo img{width:100%;height:100%;object-fit:cover}
+  .s-club{font-size:22px;font-weight:800;letter-spacing:.12em;color:#5d70b6}
+  .s-sub{font-size:11px;color:#8d96b8;letter-spacing:.08em;margin-top:2px}
+  .s-div{display:flex;align-items:center;gap:8px;margin:12px 0 10px;font-size:10px;color:#9aa5cc;letter-spacing:.18em}
+  .s-div::before,.s-div::after{content:"";flex:1;border-top:1px dashed #c5d0f0}
+  .s-meta{font-size:11.5px;color:#6b7497}
+  .s-meta .r{display:flex;justify-content:space-between;gap:8px;padding:1px 0}
+  .s-meta .r b{font-weight:600;color:#46507a}
+  .s-items{margin-top:2px}
+  .s-it{display:flex;gap:8px;padding:7px 0;border-bottom:1px dotted #d6ddf3}
+  .s-it:last-child{border-bottom:0}
+  .s-no{flex:none;font-size:10px;color:#fff;background:#9fb1e8;border-radius:6px;height:16px;line-height:16px;padding:0 5px;margin-top:2px}
+  .s-main{flex:1;min-width:0}
+  .s-name{font-size:13px;font-weight:700;color:#46507a;word-break:break-all}
+  .s-det{font-size:11px;color:#7d86a8}
+  .s-note{font-size:11px;color:#c07a8d}
+  .s-amt{flex:none;font-size:13.5px;font-weight:700;color:#46507a;text-align:right}
+  .s-sum .r{display:flex;justify-content:space-between;font-size:12.5px;padding:2px 0;color:#5f6990}
+  .s-sum .r b{color:#46507a}
+  .s-sum .r.hl{margin:4px 0;padding:7px 10px;background:#eaf0fd;border-radius:10px;font-size:14px}
+  .s-sum .r.hl b{color:#4f62a8;font-size:17px}
+  .s-sum .r.bal b{color:#4f62a8}
+  .s-sum .r.due b{color:#c4566f}
+  .s-foot{font-size:11px;color:#8d96b8;text-align:center;margin-top:10px}
+  .s-thanks{font-size:13px;color:#6c80c6;text-align:center;margin:10px 0 4px;font-weight:600}
+  .s-code{margin-top:10px;text-align:center;color:#5d6a9c}
+  .s-code svg{display:block;width:100%;height:40px}
+  .s-code p{margin:3px 0 0;font-size:10.5px;letter-spacing:.3em}
+  .s-stamp{position:absolute;right:12px;top:12px;width:66px;height:66px;border:2px solid rgba(214,108,138,.75);border-radius:50%;color:rgba(214,108,138,.85);display:flex;flex-direction:column;align-items:center;justify-content:center;transform:rotate(-14deg);font-weight:800;font-size:13px;line-height:1.15;text-align:center}
+  .s-stamp small{font-size:8px;letter-spacing:.1em;font-weight:600}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="mono" id="topLogo">MC</div>
+  <div><h1 id="topClub">May Club</h1><p>结单小票机 · Receipt Maker</p></div>
+</header>
+
+<div class="wrap">
+  <!-- ============ 开单 ============ -->
+  <section class="tab on" id="tab-order">
+    <div id="settledBar"></div>
+    <fieldset id="orderFs">
+      <div class="card">
+        <h2>订单信息</h2>
+        <div class="g2">
+          <label>单号<input class="in" data-o="no" autocomplete="off"></label>
+          <label>时间<input class="in" type="datetime-local" data-o="when"></label>
+          <label>陪玩<input class="in" data-o="staff" placeholder="陪玩名字" autocomplete="off"></label>
+          <label>老板<input class="in" data-o="boss" placeholder="老板名字" list="bossNames" autocomplete="off"></label>
+        </div>
+        <datalist id="bossNames"></datalist>
+        <label style="margin:0">备注<input class="in" data-o="remark" placeholder="可选，会印在小票上" autocomplete="off"></label>
+      </div>
+
+      <div class="card">
+        <h2>点单明细 <small id="lineCount"></small></h2>
+        <div id="lines"></div>
+        <div class="row">
+          <button class="btn dash pri" type="button" id="openPicker" style="border-style:solid">＋ 从价格表添加</button>
+          <button class="btn dash" type="button" id="addCustom" style="flex:.6">＋ 自定义</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>结算</h2>
+        <table class="sumtbl">
+          <tr><td>合计</td><td id="sTotal">0</td></tr>
+        </table>
+        <div class="g2" style="margin-top:6px">
+          <label>折扣
+            <select class="in" data-o="disc">
+              <option value="1">不打折</option><option value="0.95">95 折</option>
+              <option value="0.9">9 折</option><option value="0.88">88 折</option>
+              <option value="0.85">85 折</option><option value="0.8">8 折</option>
+            </select>
+          </label>
+          <label>实付 ¥（留空自动）<input class="in" data-o="paidOverride" inputmode="decimal" autocomplete="off"></label>
+        </div>
+        <label class="chk"><input type="checkbox" data-o="usePrepay"> 用老板预存余额抵扣</label>
+        <div id="prepayInfo" class="hint"></div>
+        <table class="sumtbl" style="margin-top:6px">
+          <tr><td>实付</td><td class="big" id="sPaid">0</td></tr>
+        </table>
+      </div>
+    </fieldset>
+
+    <div class="row" id="orderActions">
+      <button class="btn" type="button" id="goPreview">查看小票</button>
+      <button class="btn ok" type="button" id="settleBtn">结单入账</button>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <button class="btn dash" type="button" id="newOrder">新开一单</button>
+    </div>
+  </section>
+
+  <!-- ============ 小票 ============ -->
+  <section class="tab" id="tab-preview">
+    <div class="stage"><div id="slipWrap"><div class="slip" id="slip"></div></div></div>
+    <div class="row" style="margin-top:6px">
+      <button class="btn" type="button" data-go="order">返回修改</button>
+      <button class="btn pri" type="button" id="saveImg">保存图片</button>
+    </div>
+    <p class="hint" style="text-align:center">图片在本机生成，不会上传</p>
+  </section>
+
+  <!-- ============ 老板 ============ -->
+  <section class="tab" id="tab-boss">
+    <div class="card">
+      <h2>预存充值</h2>
+      <p class="hint" style="margin:-4px 0 10px">给老板充值预存，结单入账时自动抵扣</p>
+      <div class="g2">
+        <label>老板姓名<input class="in" id="rcName" list="bossNames" placeholder="新老板或已有老板" autocomplete="off"></label>
+        <label>充值金额 ¥<input class="in" id="rcAmt" inputmode="decimal" placeholder="0.00" autocomplete="off"></label>
+      </div>
+      <button class="btn pri dash" type="button" id="rcBtn" style="border-style:solid">确认充值</button>
+    </div>
+    <div class="card">
+      <h2>老板余额 <small id="bossTotal"></small></h2>
+      <input class="in" id="bossSearch" placeholder="搜索老板名字" style="margin:0 0 10px" autocomplete="off">
+      <div id="bossList"></div>
+    </div>
+  </section>
+
+  <!-- ============ 设置 ============ -->
+  <section class="tab" id="tab-set">
+    <div class="card">
+      <h2>店铺与小票</h2>
+      <label>店名<input class="in" data-s="club" autocomplete="off"></label>
+      <label>副标题<input class="in" data-s="sub" autocomplete="off"></label>
+      <label>感谢语<input class="in" data-s="thanks" autocomplete="off"></label>
+      <label>底部说明<input class="in" data-s="foot" autocomplete="off"></label>
+      <label>印章文字（留空不显示）<input class="in" data-s="stamp" maxlength="4" autocomplete="off"></label>
+      <label style="margin-bottom:4px">徽章头像</label>
+      <div class="row">
+        <button class="btn" type="button" id="logoBtn">上传图片</button>
+        <button class="btn warn" type="button" id="logoClear">恢复默认</button>
+      </div>
+      <input type="file" id="logoFile" accept="image/*" hidden>
+      <p class="hint">图片只存在这台设备上</p>
+    </div>
+    <div class="card">
+      <h2>小票显示</h2>
+      <label class="chk"><input type="checkbox" data-s="showStaff"> 陪玩</label>
+      <label class="chk"><input type="checkbox" data-s="showBoss"> 老板</label>
+      <label class="chk"><input type="checkbox" data-s="showBal"> 预存抵扣与余额</label>
+      <label class="chk"><input type="checkbox" data-s="showCode"> 条码</label>
+    </div>
+    <div class="card">
+      <h2>数据备份</h2>
+      <p class="hint" style="margin:-4px 0 10px">所有数据只存在这台设备的浏览器里，换手机或清理浏览器会丢失，建议定期导出备份。</p>
+      <div class="row">
+        <button class="btn" type="button" id="expBtn">导出备份</button>
+        <button class="btn" type="button" id="impBtn">导入备份</button>
+      </div>
+      <input type="file" id="impFile" accept="application/json,.json" hidden>
+      <div class="row" style="margin-top:8px"><button class="btn warn" type="button" id="wipeBtn">清空全部数据</button></div>
+    </div>
+  </section>
+</div>
+
+<nav class="bar">
+  <button type="button" data-go="order" class="on"><i>✎</i>开单</button>
+  <button type="button" data-go="preview"><i>❀</i>小票</button>
+  <button type="button" data-go="boss"><i>♡</i>老板</button>
+  <button type="button" data-go="set"><i>⚙</i>设置</button>
+</nav>
+
+<div class="mask" id="mask"></div>
+<div class="sheet" id="sheet">
+  <div class="sheet-h"><h3>May Club 价格表</h3><button class="btn sm" type="button" id="closePicker">关闭</button></div>
+  <div class="zones" id="zones"></div>
+  <div class="sheet-b" id="pkList"></div>
+</div>
+
+<div id="saveView">
+  <img id="saveImgEl" alt="小票图片">
+  <p>长按图片可存进相册</p>
+  <div class="row">
+    <button class="btn" type="button" id="svShare">分享</button>
+    <button class="btn" type="button" id="svDown">下载</button>
+    <button class="btn pri" type="button" id="svClose">关闭</button>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script src="html2canvas.min.js"></script>
+<script>
+(function () {
+  'use strict';
+  var $ = function (s, r) { return (r || document).querySelector(s); };
+  var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
+  var KEY = 'mayclub-receipt-v1';
+
+  /* ================= 价格表（来自 May Club 价格表图片） =================
+     o: [选项名, 单价, 计价单位]；game: 可加「甜蜜」；tech: 可加「技术带人」 */
+  var PRICES = [
+    { zone: '王者', game: 1, note: '按局计价 · 娱乐匹配包赢不可带人 · 甜蜜 +5/局/人', items: [
+      { n: '娱乐匹配', o: [['娱乐', 12, '局']] },
+      { n: '王者以下', o: [['娱乐', 12, '局'], ['技术', 15, '局'], ['包赢', 20, '局']] },
+      { n: '王者–荣耀', o: [['娱乐', 18, '局'], ['技术', 25, '局'], ['包赢', 30, '局']] },
+      { n: '荣耀–100星', o: [['娱乐', 21, '局'], ['技术', 30, '局'], ['包赢', 40, '局']] }
+    ] },
+    { zone: '和平', game: 1, note: '按时长计价 · 和平无包赢 · 技术带人 +8/人 · 甜蜜 +5/半小时/人、+8/小时/人', items: [
+      { n: '娱乐 · 王牌以下', o: [['半小时', 15, '半小时'], ['1 小时', 30, '小时']] },
+      { n: '娱乐 · 王牌以上', o: [['半小时', 20, '半小时'], ['1 小时', 40, '小时']] },
+      { n: '技术 · 王牌以下', tech: 1, o: [['半小时', 18, '半小时'], ['1 小时', 36, '小时']] },
+      { n: '技术 · 0–20星', tech: 1, o: [['半小时', 22, '半小时'], ['1 小时', 44, '小时']] },
+      { n: '战神', o: [['半小时', 25, '半小时'], ['1 小时', 50, '小时']] }
+    ] },
+    { zone: '陪伴', note: '病 / 虐恋在无颜色的前提下', items: [
+      { n: '语聊 / 哄睡', o: [['半小时', 15, '半小时'], ['1 小时', 30, '小时']] },
+      { n: '叫醒', o: [['每次', 10, '次']] },
+      { n: '虚恋', o: [['1 小时', 38, '小时']] },
+      { n: '病 / 虐恋', o: [['1 小时', 40, '小时']] },
+      { n: '歌单', o: [['30 秒', 5, '人'], ['60 秒', 10, '人'], ['整首', 15, '人']] },
+      { n: '指定头像（非情头）', o: [['每天', 13.14, '天']] },
+      { n: '情头单', o: [['每天', 26, '天']] }
+    ] },
+    { zone: '包陪', note: '包陪区除吃饭睡觉时间外随叫随到', items: [
+      { n: '包夜', o: [['6 小时', 350, '次']] },
+      { n: '包天', o: [['8 小时', 520, '次']] },
+      { n: '包周', o: [['每人', 2888, '人']] },
+      { n: '包月', o: [['每人', 8888, '人']] },
+      { n: '好友位', gift: '送 2h 王者娱乐 + 20 天群冠', o: [['每人', 520, '人']] }
+    ] }
+  ];
+  var CARRY_RATE = 8;
+  function sweetRate(unit) { return unit === '小时' ? 8 : 5; }
+
+  /* ================= 工具 ================= */
+  function num(v) {
+    var n = parseFloat(String(v == null ? '' : v).replace(/[^0-9.\-]/g, ''));
+    return isFinite(n) ? n : 0;
+  }
+  function r2(n) { return Math.round((n + Number.EPSILON) * 100) / 100; }
+  function fmt(n) {
+    n = r2(n);
+    return Math.abs(n - Math.round(n)) < 0.005 ? String(Math.round(n)) : n.toFixed(2);
+  }
+  function yen(n) { return '¥' + fmt(n); }
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+  function pad(n) { return String(n).padStart(2, '0'); }
+  function localInput(d) {
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  }
+  function ymd(d) { return d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()); }
+  function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+  var toastT;
+  function toast(m) {
+    var el = $('#toast'); el.textContent = m; el.classList.add('on');
+    clearTimeout(toastT); toastT = setTimeout(function () { el.classList.remove('on'); }, 2200);
+  }
+
+  /* ================= 状态 ================= */
+  var S;
+  function defaults() {
+    return {
+      v: 1,
+      settings: {
+        club: 'May Club', sub: 'SETTLEMENT · 结单凭证',
+        thanks: '感谢老板的支持，欢迎下次光临 ♡',
+        foot: '此次结单金额如上，如有疑问可联系客服',
+        stamp: '已结清', logo: '',
+        showStaff: true, showBoss: true, showBal: true, showCode: true
+      },
+      bosses: [],
+      seq: { day: '', n: 0 },
+      order: null
+    };
+  }
+  function nextNo() {
+    var d = ymd(new Date());
+    if (S.seq.day !== d) { S.seq.day = d; S.seq.n = 0; }
+    S.seq.n += 1;
+    return 'MC' + d + '-' + String(S.seq.n).padStart(3, '0');
+  }
+  function newOrder() {
+    return { no: nextNo(), when: localInput(new Date()), staff: '', boss: '', remark: '',
+      lines: [], disc: '1', paidOverride: '', usePrepay: true, settled: null };
+  }
+  function load() {
+    var saved = null;
+    try { saved = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { saved = null; }
+    S = defaults();
+    if (saved && typeof saved === 'object') {
+      if (saved.settings) Object.keys(S.settings).forEach(function (k) { if (saved.settings[k] !== undefined) S.settings[k] = saved.settings[k]; });
+      if (Array.isArray(saved.bosses)) S.bosses = saved.bosses.filter(function (b) { return b && b.name; }).map(function (b) {
+        return { id: b.id || uid(), name: String(b.name), bal: r2(num(b.bal)), log: Array.isArray(b.log) ? b.log.slice(0, 200) : [] };
+      });
+      if (saved.seq) S.seq = { day: String(saved.seq.day || ''), n: num(saved.seq.n) };
+      if (saved.order && Array.isArray(saved.order.lines)) S.order = saved.order;
+    }
+    if (!S.order) S.order = newOrder();
+  }
+  var saveT;
+  function save() {
+    clearTimeout(saveT);
+    saveT = setTimeout(saveNow, 200);
+  }
+  function saveNow() {
+    clearTimeout(saveT);
+    try { localStorage.setItem(KEY, JSON.stringify(S)); return true; }
+    catch (e) { toast('保存失败：存储空间不足，请移除徽章图片或导出备份'); return false; }
+  }
+
+  /* ================= 计算 ================= */
+  function lineTotal(l) {
+    var unit = num(l.price);
+    if (l.game) unit += num(l.sweet) * sweetRate(l.unit);
+    if (l.tech) unit += num(l.carry) * CARRY_RATE;
+    return r2(unit * num(l.qty));
+  }
+  function orderTotal(o) { return r2(o.lines.reduce(function (s, l) { return s + lineTotal(l); }, 0)); }
+  function discRate(o) { var r = parseFloat(o.disc); return isFinite(r) && r > 0 && r <= 1 ? r : 1; }
+  function orderPaid(o) {
+    return String(o.paidOverride).trim() === '' ? r2(orderTotal(o) * discRate(o)) : r2(num(o.paidOverride));
+  }
+  function findBoss(name) {
+    name = String(name || '').trim();
+    if (!name) return null;
+    for (var i = 0; i < S.bosses.length; i++) if (S.bosses[i].name === name) return S.bosses[i];
+    return null;
+  }
+  /* 预存抵扣：已入账用快照，否则按当前余额预估 */
+  function prepayView(o) {
+    var paid = orderPaid(o);
+    if (o.settled) {
+      var s = o.settled;
+      return { active: s.before != null, before: s.before, deduct: s.deduct, after: s.after, due: r2(s.paid - s.deduct), paid: s.paid, settled: true };
+    }
+    var b = o.usePrepay ? findBoss(o.boss) : null;
+    if (!b) return { active: false, paid: paid, due: paid, deduct: 0 };
+    var deduct = r2(Math.min(Math.max(b.bal, 0), paid));
+    return { active: true, before: b.bal, deduct: deduct, after: r2(b.bal - deduct), due: r2(paid - deduct), paid: paid, settled: false };
+  }
+
+  /* ================= 开单页 ================= */
+  function lineTitle(l) {
+    if (l.custom) return '自定义项目';
+    return l.zone + ' · ' + l.name + (l.opt ? ' · ' + l.opt : '');
+  }
+  function qtyLabel(l) { return l.custom ? '数量' : '数量（' + l.unit + '）'; }
+  function renderLines() {
+    var o = S.order;
+    $('#lineCount').textContent = o.lines.length ? '共 ' + o.lines.length + ' 项' : '';
+    if (!o.lines.length) {
+      $('#lines').innerHTML = '<p class="hint" style="text-align:center;margin:4px 0 12px">还没有项目，点下面从价格表添加</p>';
+      return;
+    }
+    $('#lines').innerHTML = o.lines.map(function (l, i) {
+      var extra = '';
+      if (l.game || l.tech) {
+        extra = '<div class="g2">' +
+          (l.game ? '<label>甜蜜人数（+' + sweetRate(l.unit) + '/' + l.unit + '/人）<input class="in" data-k="sweet" inputmode="numeric" value="' + esc(l.sweet) + '" placeholder="0"></label>' : '') +
+          (l.tech ? '<label>技术带人人数（+' + CARRY_RATE + '/人）<input class="in" data-k="carry" inputmode="numeric" value="' + esc(l.carry) + '" placeholder="0"></label>' : '') +
+          '</div>';
+      }
+      return '<div class="ln" data-i="' + i + '">' +
+        '<div class="ln-h"><b>' + pad(i + 1) + '</b><span class="ln-t">' + esc(lineTitle(l)) + '</span>' +
+        '<button class="ln-x" type="button" data-del="' + i + '" aria-label="删除这一项">×</button></div>' +
+        (l.custom ? '<label>项目名称<input class="in" data-k="name" value="' + esc(l.name) + '" placeholder="例如：代练 / 礼物" autocomplete="off"></label>' : '') +
+        '<div class="g3">' +
+          '<label>单价 ¥<input class="in" data-k="price" inputmode="decimal" value="' + esc(l.price) + '"></label>' +
+          '<label>' + esc(qtyLabel(l)) + '<input class="in" data-k="qty" inputmode="decimal" value="' + esc(l.qty) + '"></label>' +
+          '<label>小计<div class="ln-sum" data-sum>' + yen(lineTotal(l)) + '</div></label>' +
+        '</div>' + extra +
+        '<input class="in" data-k="note" value="' + esc(l.note) + '" placeholder="备注（可选，会印在小票上）" autocomplete="off">' +
+      '</div>';
+    }).join('');
+  }
+  function renderSummary() {
+    var o = S.order, pv = prepayView(o);
+    $('#sTotal').textContent = yen(orderTotal(o));
+    $('#sPaid').textContent = yen(pv.paid);
+    $('[data-o="paidOverride"]').placeholder = fmt(r2(orderTotal(o) * discRate(o)));
+    var info = $('#prepayInfo');
+    info.classList.remove('bad');
+    if (o.settled) {
+      info.textContent = pv.active ? '已入账：抵扣 ' + yen(pv.deduct) + '，余额 ' + yen(pv.before) + ' → ' + yen(pv.after) : '已入账（未使用预存）';
+    } else if (!o.usePrepay) {
+      info.textContent = '不使用预存，小票上显示实付金额';
+    } else if (!String(o.boss).trim()) {
+      info.textContent = '填写老板名字后可使用预存';
+    } else if (!findBoss(o.boss)) {
+      info.textContent = '没有找到「' + o.boss.trim() + '」的预存，入账时不会扣款';
+      info.classList.add('bad');
+    } else {
+      info.textContent = '当前余额 ' + yen(pv.before) + '，本单抵扣 ' + yen(pv.deduct) + '，入账后余额 ' + yen(pv.after) +
+        (pv.due > 0 ? '，还需另付 ' + yen(pv.due) : '');
+      if (pv.due > 0) info.classList.add('bad');
+    }
+  }
+  function syncOrderForm() {
+    var o = S.order;
+    $$('[data-o]').forEach(function (el) {
+      var k = el.getAttribute('data-o');
+      if (el.type === 'checkbox') el.checked = !!o[k]; else el.value = o[k] == null ? '' : o[k];
+    });
+    var locked = !!o.settled;
+    $('#orderFs').disabled = locked;
+    $('#settleBtn').textContent = locked ? '撤销入账' : '结单入账';
+    $('#settleBtn').className = locked ? 'btn warn' : 'btn ok';
+    $('#settledBar').innerHTML = locked
+      ? '<div class="card" style="text-align:center"><span class="pill">✓ 已入账</span> <span class="hint">这一单已锁定，修改前请先撤销入账</span></div>' : '';
+    renderBossNames();
+    renderLines();
+    renderSummary();
+  }
+  function renderBossNames() {
+    $('#bossNames').innerHTML = S.bosses.map(function (b) { return '<option value="' + esc(b.name) + '">'; }).join('');
+  }
+
+  /* ================= 价格表选择 ================= */
+  var zoneIdx = 0;
+  function renderPicker() {
+    $('#zones').innerHTML = PRICES.map(function (z, i) {
+      return '<button type="button" data-z="' + i + '" class="' + (i === zoneIdx ? 'on' : '') + '">' + z.zone + '</button>';
+    }).join('');
+    var z = PRICES[zoneIdx];
+    $('#pkList').innerHTML = '<div class="znote">' + esc(z.note) + '</div>' + z.items.map(function (it, i) {
+      return '<div class="pk"><div class="pk-n">' + esc(it.n) + (it.gift ? '<small>' + esc(it.gift) + '</small>' : '') + '</div><div class="pk-o">' +
+        it.o.map(function (op, j) {
+          return '<button type="button" data-add="' + i + ':' + j + '">' + esc(op[0]) + ' <b>¥' + fmt(op[1]) + '</b></button>';
+        }).join('') + '</div></div>';
+    }).join('');
+  }
+  function openPicker() { renderPicker(); $('#mask').classList.add('on'); $('#sheet').classList.add('on'); }
+  function closePicker() { $('#mask').classList.remove('on'); $('#sheet').classList.remove('on'); }
+  function addFromPrice(zi, ii, oi) {
+    var z = PRICES[zi], it = z.items[ii], op = it.o[oi];
+    S.order.lines.push({
+      id: uid(), zone: z.zone, name: it.n, opt: it.o.length > 1 || op[0] !== '每人' ? op[0] : '',
+      unit: op[2], price: String(op[1]), qty: '1', sweet: '', carry: '',
+      game: !!z.game, tech: !!it.tech, note: it.gift || '', custom: false
+    });
+    save(); renderLines(); renderSummary();
+    toast('已添加：' + it.n + ' · ' + op[0]);
+  }
+
+  /* ================= 小票 ================= */
+  var edgeCache = {};
+  function edgeTile(flip) {
+    var k = flip ? 'b' : 't';
+    if (edgeCache[k]) return edgeCache[k];
+    var c = document.createElement('canvas'); c.width = 40; c.height = 20;
+    var x = c.getContext('2d'); x.fillStyle = '#fbfcff';
+    x.beginPath();
+    if (flip) { x.arc(20, 0, 20, 0, Math.PI); } else { x.arc(20, 20, 20, Math.PI, 0); }
+    x.fill();
+    edgeCache[k] = c.toDataURL('image/png');
+    return edgeCache[k];
+  }
+  function barcodeSVG(seed) {
+    var s = String(seed || '0'), h = 2166136261 >>> 0, i;
+    for (i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+    function rnd() { h = (Math.imul(h, 1664525) + 1013904223) >>> 0; return h / 4294967296; }
+    var parts = '', x = 0;
+    while (x < 296) {
+      var w = 1 + Math.floor(rnd() * 3);
+      parts += '<rect x="' + x + '" y="0" width="' + w + '" height="40"/>';
+      x += w + 1 + Math.floor(rnd() * 2);
+    }
+    return '<svg viewBox="0 0 300 40" preserveAspectRatio="none" fill="currentColor" aria-hidden="true">' + parts + '</svg>';
+  }
+  function fmtWhen(v) {
+    var d = v ? new Date(v) : new Date();
+    if (isNaN(d.getTime())) d = new Date();
+    return d.getFullYear() + '.' + pad(d.getMonth() + 1) + '.' + pad(d.getDate()) + '  ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  }
+  function monogram(name) {
+    var w = String(name || '').trim().split(/\s+/).filter(Boolean);
+    if (w.length >= 2) return (w[0][0] + w[1][0]).toUpperCase();
+    return (w[0] || 'MC').slice(0, 2).toUpperCase();
+  }
+  function lineDetail(l) {
+    var parts = [];
+    if (l.custom) parts.push(yen(num(l.price)) + ' × ' + fmt(num(l.qty)));
+    else parts.push(yen(num(l.price)) + ' × ' + fmt(num(l.qty)) + ' ' + l.unit);
+    if (l.game && num(l.sweet) > 0) parts.push('甜蜜 ' + fmt(num(l.sweet)) + ' 人 +' + sweetRate(l.unit) + '/' + l.unit);
+    if (l.tech && num(l.carry) > 0) parts.push('带人 ' + fmt(num(l.carry)) + ' 人 +' + CARRY_RATE);
+    return parts.join(' · ');
+  }
+  function renderSlip() {
+    var o = S.order, st = S.settings, pv = prepayView(o), total = orderTotal(o), rate = discRate(o);
+    var logo = st.logo ? '<img src="' + esc(st.logo) + '" alt="">' : esc(monogram(st.club));
+    var items = o.lines.length ? o.lines.map(function (l, i) {
+      var name = l.custom ? (String(l.name).trim() || '自定义项目') : l.name + (l.opt ? ' · ' + l.opt : '');
+      if (!l.custom) name = l.zone + ' ' + name;
+      return '<div class="s-it"><div class="s-no">' + pad(i + 1) + '</div><div class="s-main">' +
+        '<div class="s-name">' + esc(name) + '</div><div class="s-det">' + esc(lineDetail(l)) + '</div>' +
+        (String(l.note).trim() ? '<div class="s-note">' + esc(String(l.note).trim()) + '</div>' : '') +
+        '</div><div class="s-amt">' + yen(lineTotal(l)) + '</div></div>';
+    }).join('') : '<div class="s-it"><div class="s-main s-det">（暂无项目）</div></div>';
+
+    var meta = '<div class="r"><span>单号</span><b>' + esc(o.no) + '</b></div>' +
+      '<div class="r"><span>时间</span><b>' + fmtWhen(o.when) + '</b></div>' +
+      (st.showStaff && String(o.staff).trim() ? '<div class="r"><span>陪玩</span><b>' + esc(o.staff.trim()) + '</b></div>' : '') +
+      (st.showBoss && String(o.boss).trim() ? '<div class="r"><span>老板</span><b>' + esc(o.boss.trim()) + '</b></div>' : '') +
+      (String(o.remark).trim() ? '<div class="r"><span>备注</span><b>' + esc(o.remark.trim()) + '</b></div>' : '');
+
+    var sum = '<div class="r"><span>总单合计</span><b>' + yen(total) + '</b></div>';
+    if (rate < 1) sum += '<div class="r"><span>折扣</span><b>' + fmt(rate * 100).replace(/0$/, '') + ' 折</b></div>';
+    var autoPaid = r2(total * rate);
+    if (String(o.paidOverride).trim() !== '' && r2(num(o.paidOverride)) !== autoPaid && !o.settled) {
+      sum += '<div class="r"><span>调整</span><b>' + (pv.paid - autoPaid >= 0 ? '+' : '−') + yen(Math.abs(pv.paid - autoPaid)) + '</b></div>';
+    }
+    sum += '<div class="r hl"><span>实付金额</span><b>' + yen(pv.paid) + '</b></div>';
+    if (st.showBal && pv.active) {
+      sum += '<div class="r"><span>预存抵扣</span><b>−' + yen(pv.deduct) + '</b></div>' +
+        '<div class="r bal"><span>剩余预存</span><b>' + yen(pv.after) + '</b></div>' +
+        (pv.due > 0 ? '<div class="r due"><span>还需支付</span><b>' + yen(pv.due) + '</b></div>' : '');
+    }
+    var stamp = o.settled && String(st.stamp).trim()
+      ? '<div class="s-stamp">' + esc(String(st.stamp).trim()) + '<small>PAID</small></div>' : '';
+
+    $('#slip').innerHTML =
+      '<div class="edge" style="background-image:url(' + edgeTile(false) + ')"></div>' +
+      '<div class="slip-b"><div class="frame">' + stamp +
+        '<div class="s-head"><div class="s-logo">' + logo + '</div>' +
+          '<div class="s-club">' + esc(st.club || 'May Club') + '</div>' +
+          '<div class="s-sub">' + esc(st.sub) + '</div></div>' +
+        '<div class="s-div">ORDER</div><div class="s-meta">' + meta + '</div>' +
+        '<div class="s-div">ITEMS</div><div class="s-items">' + items + '</div>' +
+        '<div class="s-div">TOTAL</div><div class="s-sum">' + sum + '</div>' +
+        (String(st.foot).trim() ? '<div class="s-foot">' + esc(st.foot) + '</div>' : '') +
+        (String(st.thanks).trim() ? '<div class="s-thanks">' + esc(st.thanks) + '</div>' : '') +
+        (st.showCode ? '<div class="s-code">' + barcodeSVG(o.no) + '<p>' + esc(o.no) + '</p></div>' : '') +
+      '</div></div>' +
+      '<div class="edge" style="background-image:url(' + edgeTile(true) + ')"></div>';
+  }
+
+  /* ================= 入账 / 撤销 ================= */
+  function settle() {
+    var o = S.order;
+    if (o.settled) return unsettle();
+    if (!o.lines.length) { toast('还没有点单项目'); return; }
+    var paid = orderPaid(o);
+    var rec = { at: Date.now(), paid: paid, deduct: 0, before: null, after: null, bossId: null };
+    var b = o.usePrepay ? findBoss(o.boss) : null;
+    if (b) {
+      rec.before = b.bal;
+      rec.deduct = r2(Math.min(Math.max(b.bal, 0), paid));
+      b.bal = r2(b.bal - rec.deduct);
+      rec.after = b.bal; rec.bossId = b.id;
+      b.log.unshift({ t: Date.now(), type: '结单 ' + o.no, amt: -rec.deduct, bal: b.bal });
+    }
+    o.settled = rec;
+    if (!saveNow()) { /* 存不进去就回滚，避免余额与小票不一致 */
+      if (b) { b.bal = rec.before; b.log.shift(); }
+      o.settled = null; return;
+    }
+    syncOrderForm(); renderBosses();
+    toast(b ? '已入账，抵扣 ' + yen(rec.deduct) : '已入账');
+  }
+  function unsettle() {
+    var o = S.order, rec = o.settled;
+    if (!rec) return;
+    if (!confirm('撤销这一单的入账？' + (rec.deduct > 0 ? '\n会把 ' + yen(rec.deduct) + ' 退回老板预存。' : ''))) return;
+    if (rec.bossId && rec.deduct > 0) {
+      var b = S.bosses.filter(function (x) { return x.id === rec.bossId; })[0];
+      if (b) {
+        b.bal = r2(b.bal + rec.deduct);
+        b.log.unshift({ t: Date.now(), type: '撤销 ' + o.no, amt: rec.deduct, bal: b.bal });
+      } else toast('该老板已被删除，无法退回余额');
+    }
+    o.settled = null;
+    saveNow(); syncOrderForm(); renderBosses();
+    toast('已撤销入账');
+  }
+
+  /* ================= 老板 ================= */
+  function fmtT(t) { var d = new Date(t); return pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()); }
+  var openLog = {};
+  function renderBosses() {
+    var q = $('#bossSearch').value.trim();
+    var list = S.bosses.filter(function (b) { return !q || b.name.indexOf(q) >= 0; });
+    $('#bossTotal').textContent = S.bosses.length ? S.bosses.length + ' 位 · 共 ' + yen(S.bosses.reduce(function (s, b) { return s + b.bal; }, 0)) : '';
+    $('#bossList').innerHTML = list.length ? list.map(function (b) {
+      var log = openLog[b.id] ? '<div class="log">' + (b.log.length ? b.log.slice(0, 30).map(function (e) {
+        return '<div><span>' + fmtT(e.t) + ' ' + esc(e.type) + '</span><span>' + (e.amt >= 0 ? '+' : '−') + fmt(Math.abs(e.amt)) + ' → ' + fmt(e.bal) + '</span></div>';
+      }).join('') : '<div>暂无记录</div>') + '</div>' : '';
+      return '<div class="boss" data-b="' + esc(b.id) + '"><div class="boss-h"><b>' + esc(b.name) + '</b><span class="' + (b.bal < 0 ? 'neg' : '') + '">' + yen(b.bal) + '</span></div>' +
+        '<div class="row"><button class="btn" type="button" data-rc="50">+50</button><button class="btn" type="button" data-rc="100">+100</button>' +
+        '<button class="btn" type="button" data-rc="200">+200</button><button class="btn" type="button" data-use>开单</button></div>' +
+        '<div class="row" style="margin-top:6px"><button class="btn sm" type="button" data-log>' + (openLog[b.id] ? '收起流水' : '流水') + '</button>' +
+        '<button class="btn sm warn" type="button" data-delb>删除</button></div>' + log + '</div>';
+    }).join('') : '<p class="hint" style="text-align:center">' + (q ? '没有匹配的老板' : '还没有老板，先在上面充值') + '</p>';
+  }
+  function recharge(name, amt) {
+    name = String(name || '').trim(); amt = r2(num(amt));
+    if (!name) { toast('请填写老板姓名'); return false; }
+    if (!(amt > 0)) { toast('请填写充值金额'); return false; }
+    var b = findBoss(name);
+    if (!b) { b = { id: uid(), name: name, bal: 0, log: [] }; S.bosses.unshift(b); }
+    b.bal = r2(b.bal + amt);
+    b.log.unshift({ t: Date.now(), type: '充值', amt: amt, bal: b.bal });
+    saveNow(); renderBosses(); renderBossNames(); renderSummary();
+    toast(name + ' 充值 ' + yen(amt) + '，余额 ' + yen(b.bal));
+    return true;
+  }
+
+  /* ================= 设置 ================= */
+  function syncSettings() {
+    $$('[data-s]').forEach(function (el) {
+      var k = el.getAttribute('data-s');
+      if (el.type === 'checkbox') el.checked = !!S.settings[k]; else el.value = S.settings[k] == null ? '' : S.settings[k];
+    });
+    renderTop();
+  }
+  function renderTop() {
+    $('#topClub').textContent = S.settings.club || 'May Club';
+    $('#topLogo').innerHTML = S.settings.logo ? '<img src="' + esc(S.settings.logo) + '" alt="">' : esc(monogram(S.settings.club));
+    document.title = (S.settings.club || 'May Club') + ' · 结单小票机';
+  }
+  function compressImage(file, max, done) {
+    var url = URL.createObjectURL(file), img = new Image();
+    img.onload = function () {
+      URL.revokeObjectURL(url);
+      var w = img.width, h = img.height, k = Math.min(1, max / Math.max(w, h));
+      var c = document.createElement('canvas'); c.width = Math.round(w * k); c.height = Math.round(h * k);
+      var x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height);
+      x.drawImage(img, 0, 0, c.width, c.height);
+      done(c.toDataURL('image/jpeg', 0.86));
+    };
+    img.onerror = function () { URL.revokeObjectURL(url); toast('图片读取失败，请换一张'); };
+    img.src = url;
+  }
+
+  /* ================= 存图 ================= */
+  var saved = null, busy = false;
+  function saveImage() {
+    if (busy) return;
+    if (!window.html2canvas) { toast('图片组件没加载成功，可以直接截图'); return; }
+    busy = true; toast('正在生成图片…');
+    window.html2canvas($('#slipWrap'), { scale: 3, backgroundColor: '#e6ecfb', logging: false }).then(function (canvas) {
+      canvas.toBlob(function (blob) {
+        busy = false;
+        if (!blob) { toast('生成失败，可以直接截图'); return; }
+        if (saved) URL.revokeObjectURL(saved.url);
+        saved = { blob: blob, url: URL.createObjectURL(blob), name: '小票-' + S.order.no + '.png' };
+        $('#saveImgEl').src = saved.url;
+        $('#svShare').hidden = !(navigator.canShare && navigator.canShare({ files: [new File([blob], saved.name, { type: 'image/png' })] }));
+        $('#saveView').classList.add('on');
+      }, 'image/png');
+    }).catch(function () { busy = false; toast('生成失败，可以直接截图'); });
+  }
+  function download(blob, name) {
+    var a = document.createElement('a'), url = URL.createObjectURL(blob);
+    a.href = url; a.download = name; document.body.appendChild(a); a.click();
+    setTimeout(function () { a.remove(); URL.revokeObjectURL(url); }, 500);
+  }
+
+  /* ================= 导航 ================= */
+  function go(tab) {
+    $$('.tab').forEach(function (t) { t.classList.toggle('on', t.id === 'tab-' + tab); });
+    $$('nav.bar button').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-go') === tab); });
+    if (tab === 'preview') renderSlip();
+    if (tab === 'boss') renderBosses();
+    window.scrollTo(0, 0);
+  }
+
+  /* ================= 事件 ================= */
+  function bind() {
+    document.addEventListener('click', function (e) {
+      var g = e.target.closest('[data-go]');
+      if (g) go(g.getAttribute('data-go'));
+    });
+
+    /* 订单字段 */
+    $$('[data-o]').forEach(function (el) {
+      var ev = el.tagName === 'SELECT' || el.type === 'checkbox' ? 'change' : 'input';
+      el.addEventListener(ev, function () {
+        var k = el.getAttribute('data-o');
+        S.order[k] = el.type === 'checkbox' ? el.checked : el.value;
+        save(); renderSummary();
+      });
+    });
+
+    /* 明细行 */
+    $('#lines').addEventListener('input', function (e) {
+      var k = e.target.getAttribute('data-k'), card = e.target.closest('.ln');
+      if (!k || !card) return;
+      var l = S.order.lines[+card.getAttribute('data-i')];
+      if (!l) return;
+      l[k] = e.target.value;
+      $('[data-sum]', card).textContent = yen(lineTotal(l));
+      save(); renderSummary();
+    });
+    $('#lines').addEventListener('click', function (e) {
+      var d = e.target.closest('[data-del]');
+      if (!d) return;
+      S.order.lines.splice(+d.getAttribute('data-del'), 1);
+      save(); renderLines(); renderSummary();
+    });
+    $('#addCustom').addEventListener('click', function () {
+      S.order.lines.push({ id: uid(), custom: true, name: '', zone: '', opt: '', unit: '', price: '', qty: '1', sweet: '', carry: '', game: false, tech: false, note: '' });
+      save(); renderLines(); renderSummary();
+    });
+
+    /* 价格表 */
+    $('#openPicker').addEventListener('click', openPicker);
+    $('#closePicker').addEventListener('click', closePicker);
+    $('#mask').addEventListener('click', closePicker);
+    $('#zones').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-z]'); if (!b) return;
+      zoneIdx = +b.getAttribute('data-z'); renderPicker();
+    });
+    $('#pkList').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-add]'); if (!b) return;
+      var p = b.getAttribute('data-add').split(':');
+      addFromPrice(zoneIdx, +p[0], +p[1]);
+      closePicker();
+    });
+
+    /* 订单操作 */
+    $('#goPreview').addEventListener('click', function () { go('preview'); });
+    $('#settleBtn').addEventListener('click', settle);
+    $('#newOrder').addEventListener('click', function () {
+      var o = S.order;
+      if (o.lines.length && !o.settled && !confirm('当前这单还没入账，确定放弃并新开一单？')) return;
+      S.order = newOrder(); saveNow(); syncOrderForm(); toast('已新开一单 ' + S.order.no);
+    });
+
+    /* 老板 */
+    $('#rcBtn').addEventListener('click', function () {
+      if (recharge($('#rcName').value, $('#rcAmt').value)) { $('#rcName').value = ''; $('#rcAmt').value = ''; }
+    });
+    $('#bossSearch').addEventListener('input', renderBosses);
+    $('#bossList').addEventListener('click', function (e) {
+      var card = e.target.closest('[data-b]'); if (!card) return;
+      var id = card.getAttribute('data-b'), b = S.bosses.filter(function (x) { return x.id === id; })[0];
+      if (!b) return;
+      var rc = e.target.closest('[data-rc]');
+      if (rc) { recharge(b.name, rc.getAttribute('data-rc')); return; }
+      if (e.target.closest('[data-log]')) { openLog[id] = !openLog[id]; renderBosses(); return; }
+      if (e.target.closest('[data-use]')) {
+        if (S.order.settled) { toast('当前单已入账，请先新开一单'); return; }
+        S.order.boss = b.name; S.order.usePrepay = true; save(); syncOrderForm(); go('order'); return;
+      }
+      if (e.target.closest('[data-delb]')) {
+        if (!confirm('删除老板「' + b.name + '」？\n余额 ' + yen(b.bal) + ' 和流水记录都会被删除，无法恢复。')) return;
+        S.bosses = S.bosses.filter(function (x) { return x.id !== id; });
+        saveNow(); renderBosses(); renderBossNames(); renderSummary();
+      }
+    });
+
+    /* 设置 */
+    $$('[data-s]').forEach(function (el) {
+      var ev = el.type === 'checkbox' ? 'change' : 'input';
+      el.addEventListener(ev, function () {
+        S.settings[el.getAttribute('data-s')] = el.type === 'checkbox' ? el.checked : el.value;
+        save(); renderTop();
+      });
+    });
+    $('#logoBtn').addEventListener('click', function () { $('#logoFile').click(); });
+    $('#logoFile').addEventListener('change', function (e) {
+      var f = e.target.files && e.target.files[0]; e.target.value = '';
+      if (!f) return;
+      compressImage(f, 240, function (d) {
+        var old = S.settings.logo; S.settings.logo = d;
+        if (!saveNow()) { S.settings.logo = old; return; }
+        renderTop(); toast('徽章已更新');
+      });
+    });
+    $('#logoClear').addEventListener('click', function () { S.settings.logo = ''; saveNow(); renderTop(); toast('已恢复默认徽章'); });
+
+    $('#expBtn').addEventListener('click', function () {
+      var blob = new Blob([JSON.stringify(S, null, 1)], { type: 'application/json' });
+      download(blob, 'mayclub-备份-' + ymd(new Date()) + '.json');
+    });
+    $('#impBtn').addEventListener('click', function () { $('#impFile').click(); });
+    $('#impFile').addEventListener('change', function (e) {
+      var f = e.target.files && e.target.files[0]; e.target.value = '';
+      if (!f) return;
+      var fr = new FileReader();
+      fr.onload = function () {
+        var data;
+        try { data = JSON.parse(fr.result); } catch (err) { toast('文件格式不对'); return; }
+        if (!data || typeof data !== 'object' || !Array.isArray(data.bosses)) { toast('这不是小票机的备份文件'); return; }
+        if (!confirm('导入会覆盖这台设备上的现有数据（老板 ' + S.bosses.length + ' 位），确定？')) return;
+        try { localStorage.setItem(KEY, JSON.stringify(data)); } catch (err) { toast('导入失败：存储空间不足'); return; }
+        load(); syncSettings(); syncOrderForm(); renderBosses(); toast('已导入备份');
+      };
+      fr.readAsText(f);
+    });
+    $('#wipeBtn').addEventListener('click', function () {
+      if (!confirm('清空全部数据？所有老板余额、流水和设置都会被删除，无法恢复。')) return;
+      if (!confirm('再确认一次：真的清空吗？建议先导出备份。')) return;
+      localStorage.removeItem(KEY); load(); syncSettings(); syncOrderForm(); renderBosses(); toast('已清空');
+    });
+
+    /* 存图 */
+    $('#saveImg').addEventListener('click', saveImage);
+    $('#svClose').addEventListener('click', function () { $('#saveView').classList.remove('on'); });
+    $('#svDown').addEventListener('click', function () { if (saved) download(saved.blob, saved.name); });
+    $('#svShare').addEventListener('click', function () {
+      if (!saved) return;
+      navigator.share({ files: [new File([saved.blob], saved.name, { type: 'image/png' })], title: '结单小票 ' + S.order.no }).catch(function () {});
+    });
+  }
+
+  load();
+  bind();
+  syncSettings();
+  syncOrderForm();
+  renderBosses();
+  saveNow();
+})();
+</script>
+</body>
+</html>
