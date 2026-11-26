@@ -275,6 +275,9 @@ select.control{ appearance: none; -webkit-appearance: none; padding-right: 30px;
   font-size: 14px; color: var(--ui-ink-2); pointer-events: none;
 }
 .money-wrap .control{ padding-left: 26px; text-align: right; }
+.money-row > span small{ display: block; font-size: 9.5px; letter-spacing: .04em; opacity: .8; margin-top: 1px; }
+.auto-note.warn{ color: #c2667f; }
+.money-row[hidden], .auto-note[hidden]{ display: none; }
 .auto-note{
   display: flex; align-items: center; gap: 6px; font-size: 10px;
   color: var(--ui-ink-2); letter-spacing: .04em;
@@ -666,6 +669,7 @@ select.control{ appearance: none; -webkit-appearance: none; padding-right: 30px;
 
 /* 实付 / 余额 双卡 */
 .tk-two{ display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 0 0 12px; }
+.tk-two.one{ grid-template-columns: 1fr; }
 .tk-chip{ border-radius: 9px; padding: 7px 9px 8px; }
 .tk-chip.a{ background: var(--tk-soft-1); }
 .tk-chip.b{ background: var(--tk-soft-2); }
@@ -1056,6 +1060,14 @@ select.control{ appearance: none; -webkit-appearance: none; padding-right: 30px;
   border: 1px solid var(--accent); background: var(--accent); color: #fff;
   font-size: 12.5px; letter-spacing: .08em;
 }
+.pick-btn{
+  height: 26px; padding: 0 10px; border-radius: 8px;
+  border: 1px solid var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent);
+  color: var(--accent); font-size: 11.5px; letter-spacing: .06em;
+}
+.pick-btn:hover{ background: var(--accent); color: #fff; }
+.item-head .pick-btn{ margin-left: auto; }
+.item-head .pick-btn + .item-del{ margin-left: 0; }
 .price-btn:hover{ filter: brightness(1.06); }
 .price-sheet[hidden]{ display: none; }
 .price-sheet{
@@ -1306,11 +1318,19 @@ select.control{ appearance: none; -webkit-appearance: none; padding-right: 30px;
           </div>
         </div>
         <div class="money-row">
-          <span>卡内余额</span>
-          <div class="money-wrap"><span class="cur" data-cur>£</span>
-            <input id="balance" class="control" inputmode="decimal" autocomplete="off">
+          <span>会员卡</span>
+          <div class="field-row-inline">
+            <button class="switch" id="hasCard" type="button" role="switch" aria-pressed="true" aria-label="有会员卡"></button>
+            <span class="auto-note" id="hasCardText">有卡 · 自动扣实付</span>
           </div>
         </div>
+        <div class="money-row" id="balanceRow">
+          <span>卡内余额<small>结单前</small></span>
+          <div class="money-wrap"><span class="cur" data-cur>£</span>
+            <input id="balance" class="control" inputmode="decimal" autocomplete="off" placeholder="0">
+          </div>
+        </div>
+        <div class="auto-note" id="balanceNote"></div>
       </div>
     </section>
 
@@ -1323,7 +1343,7 @@ select.control{ appearance: none; -webkit-appearance: none; padding-right: 30px;
         </div>
         <div class="field">
           <label for="name">祝福人名<span class="hint">写进页脚祝语</span></label>
-          <input id="name" class="control" autocomplete="off" placeholder="May 宝贝">
+          <input id="name" class="control" autocomplete="off" placeholder="板板">
         </div>
         <div class="field">
           <label for="tail">自定义页脚祝语<span class="hint">留空自动生成</span></label>
@@ -2551,7 +2571,23 @@ try { exports.GifWriter = GifWriter; exports.GifReader = GifReader } catch(e) {}
   }
 
   /* ---------- 渲染小票 ---------- */
+  function syncCardUI() {
+    var hasCard = state.hasCard !== false;
+    var sw = $('#hasCard'); if (!sw) return;
+    sw.setAttribute('aria-pressed', String(hasCard));
+    $('#hasCardText').textContent = hasCard ? '有卡 · 自动扣实付' : '无卡 · 小票不显示余额';
+    $('#balanceRow').hidden = !hasCard;
+    var note = $('#balanceNote');
+    note.hidden = !hasCard;
+    if (!hasCard) return;
+    var before = num(state.balance), paid = effPaid(), left = before - paid;
+    note.classList.toggle('warn', left < 0);
+    note.textContent = left < 0
+      ? '余额不足：' + money(before, false) + ' − 实付 ' + money(paid, false) + '，还差 ' + money(-left, false)
+      : '结单后剩余 ' + money(left, false) + '（' + money(before, false) + ' − 实付 ' + money(paid, false) + '）';
+  }
   function renderSlip() {
+    syncCardUI();
     var STYLE_LIST = ['classic', 'cream', 'bakery', 'panel', 'pixel'];
     var st = STYLE_LIST.indexOf(state.style) >= 0 ? state.style : 'classic';
     state.style = st;
@@ -2626,16 +2662,18 @@ try { exports.GifWriter = GifWriter; exports.GifReader = GifReader } catch(e) {}
     var fSum = '<div class="tk-split"></div><div class="tk-sum">' +
       '<div class="tk-sum-l"><small>TOTAL · 合计</small><b>' + money(t, false) + '</b>' + discSmall + '</div>' +
       stampBlock + '</div>';
-    var fChips = '<div class="tk-two">' +
+    var hasCard = state.hasCard !== false;
+    var left = num(state.balance) - paid;
+    var fChips = '<div class="tk-two' + (hasCard ? '' : ' one') + '">' +
       '<div class="tk-chip a"><small>实付 PAID</small><b>' + money(paid, false) + '</b></div>' +
-      '<div class="tk-chip b"><small>卡内余额 BALANCE</small><b>' + money(num(state.balance), false) + '</b></div></div>';
+      (hasCard ? '<div class="tk-chip b"><small>卡内余额 BALANCE</small><b>' + money(left, false) + '</b></div>' : '') + '</div>';
 
     function ledgerRow(k, en, v, hl) {
       return '<div class="tk-row' + (hl ? ' hl' : '') + '"><span class="tk-row-k">' + esc(k) + '<em>' + esc(en) + '</em></span><i class="tk-dots"></i><b class="tk-row-v">' + v + '</b></div>';
     }
     var ledgerRows = ledgerRow('总单合计', 'TOTAL', money(t, false), false) +
       ledgerRow('实付金额', 'PAID', money(paid, false), true) +
-      ledgerRow('卡内余额', 'BALANCE', money(num(state.balance), false), false);
+      (hasCard ? ledgerRow('卡内余额', 'BALANCE', money(left, false), false) : '');
     var fLedger = '<div class="tk-ledger">' +
       '<div class="tk-ledger-head"><span>项目金额</span>' + stampBlock + '</div>' +
       '<p class="tk-ledger-note">此次结单金额如下，如有疑问可向客服咨询</p>' +
@@ -2694,10 +2732,11 @@ try { exports.GifWriter = GifWriter; exports.GifReader = GifReader } catch(e) {}
         ? '<button class="item-del" type="button" data-del="' + i + '" aria-label="删除第' + idx + '项">&times;</button>' : '';
       return '<div class="item-card" data-idx="' + i + '">' +
         '<div class="item-head"><span class="item-index">#' + idx + '</span>' +
-          '<span class="item-label">点单明细</span>' + del + '</div>' +
+          '<span class="item-label">点单明细</span>' +
+          '<button class="pick-btn" type="button" data-pickfor="' + i + '">' + (it.type ? '换项目' : '选择项目') + '</button>' + del + '</div>' +
         '<div class="grid3">' +
           '<div class="field"><label>点单类型</label>' +
-            '<input class="control" data-k="type" value="' + esc(it.type) + '" autocomplete="off" aria-label="点单类型"></div>' +
+            '<input class="control" data-k="type" value="' + esc(it.type) + '" autocomplete="off" placeholder="点「选择项目」或自己填" aria-label="点单类型"></div>' +
           '<div class="field"><label>副标 · 拼音</label>' +
             '<input class="control" data-k="sub" value="' + esc(it.sub) + '" autocomplete="off" aria-label="副标"></div>' +
         '</div>' +
@@ -2862,6 +2901,7 @@ try { exports.GifWriter = GifWriter; exports.GifReader = GifReader } catch(e) {}
     /* 店名已固定，把旧存档里的旧店名迁到新店名 */
     if (m.clubCn === '星野游戏屋') m.clubCn = DEFAULTS.clubCn;
     if (m.clubEn === 'HOSHINO PLAYROOM') m.clubEn = DEFAULTS.clubEn;
+    if (m.name === '小满') m.name = '';
     if (m.logoImg === undefined) m.logoImg = '';
     if (m.bgImg === undefined) m.bgImg = '';
     if (m.bgOpacity === undefined || !(m.bgOpacity > 0)) m.bgOpacity = 1;
@@ -2872,6 +2912,10 @@ try { exports.GifWriter = GifWriter; exports.GifReader = GifReader } catch(e) {}
     if (DOT_SHAPES.indexOf(m.dotShape) < 0) m.dotShape = 'circle';
     var sc = Number(m.dotScale);
     m.dotScale = (sc >= 0.7 && sc <= 1.6) ? sc : 1;
+    if (Array.isArray(m.items) && m.items.length === 1 && m.items[0].type === '王者 · 王者以下 技术' &&
+        m.items[0].name === '栗子' && m.items[0].amt === '45') {
+      m.items = [];
+    }
     if (!Array.isArray(m.items) || !m.items.length) {
       m.items = DEFAULTS.items.map(function (x) { return Object.assign({}, x); });
     } else {
@@ -3599,6 +3643,8 @@ try { exports.GifWriter = GifWriter; exports.GifReader = GifReader } catch(e) {}
       renderSlip(); save();
     });
     $('#items').addEventListener('click', function (e) {
+      var pf = e.target.closest('[data-pickfor]');
+      if (pf) { openPrices(Number(pf.dataset.pickfor)); return; }
       var segBtn = e.target.closest('.role-seg button');
       if (segBtn) {
         var segCard = segBtn.closest('.item-card');
@@ -3614,7 +3660,7 @@ try { exports.GifWriter = GifWriter; exports.GifReader = GifReader } catch(e) {}
       state.items.splice(Number(del.dataset.del), 1);
       renderItems(); renderSlip(); save();
     });
-    $('#openPrices').addEventListener('click', openPrices);
+    $('#openPrices').addEventListener('click', function () { openPrices(-1); });
     $('#closePrices').addEventListener('click', closePrices);
     $('#editPrices').addEventListener('click', function () { priceEditing = !priceEditing; renderPrices(); });
     $('#priceBody').addEventListener('input', function (e) { if (e.target.dataset.f) priceInput(e.target); });
@@ -3640,12 +3686,11 @@ try { exports.GifWriter = GifWriter; exports.GifReader = GifReader } catch(e) {}
       if (last) { $('[data-k=name]', last).focus(); }
     });
     $('#clearItems').addEventListener('click', function () {
-      /* 清空所有点单项目，并重置合计/实付/折扣/余额 */
+      /* 清空所有点单项目，并重置合计/实付/折扣（会员卡余额保留） */
       state.items = [{ type: '', sub: '', role: 'peipei', name: '', note: '', qty: '1', amt: '' }];
       state.total = '';
       state.paid = '';
       state.discount = '1';
-      state.balance = DEFAULTS.balance;
       syncForm(); renderItems(); renderSlip(); save();
       toast('已清空点单项目与结算内容');
     });
@@ -3658,6 +3703,10 @@ try { exports.GifWriter = GifWriter; exports.GifReader = GifReader } catch(e) {}
     });
     $('#balance').addEventListener('input', function (e) {
       state.balance = e.target.value; renderSlip(); save();
+    });
+    $('#hasCard').addEventListener('click', function () {
+      state.hasCard = state.hasCard === false;
+      renderSlip(); save();
     });
     $('#cur').addEventListener('change', function (e) {
       state.cur = e.target.value;
@@ -3924,7 +3973,7 @@ try { exports.GifWriter = GifWriter; exports.GifReader = GifReader } catch(e) {}
     try { localStorage.setItem(PRICE_KEY, JSON.stringify(PRICES)); } catch (e) {}
   }
   var PRICES = loadPrices();
-  var priceZone = 0, priceEditing = false;
+  var priceZone = 0, priceEditing = false, pickTarget = -1;
   function fmtPrice(n) {
     n = Math.round((n + Number.EPSILON) * 100) / 100;
     return Math.abs(n - Math.round(n)) < 0.005 ? String(Math.round(n)) : n.toFixed(2);
@@ -4028,8 +4077,12 @@ try { exports.GifWriter = GifWriter; exports.GifReader = GifReader } catch(e) {}
     }
     savePrices();
   }
-  function openPrices() { renderPrices(); $('#priceSheet').hidden = false; }
-  function closePrices() { $('#priceSheet').hidden = true; }
+  function openPrices(target) {
+    pickTarget = typeof target === 'number' ? target : -1;
+    priceEditing = false;
+    renderPrices(); $('#priceSheet').hidden = false;
+  }
+  function closePrices() { $('#priceSheet').hidden = true; pickTarget = -1; }
   function pickPrice(ii, oi) {
     var z = PRICES[priceZone], it = z.items[ii], o = it.o[oi];
     var price = num(o[1]), label = String(o[0] || '').replace(/\s+/g, '');
@@ -4037,6 +4090,18 @@ try { exports.GifWriter = GifWriter; exports.GifReader = GifReader } catch(e) {}
     var row = { type: type, sub: toPinyinUpper(type), role: 'peipei', name: '', note: it.gift || '',
       qty: '1', amt: fmtPrice(price), up: price, unit: o[2] || '件' };
     var last = state.items[state.items.length - 1];
+    if (pickTarget >= 0 && state.items[pickTarget]) {
+      /* 从某一项的「选择项目」打开：替换这一项，保留身份 / 名称 */
+      var cur = state.items[pickTarget];
+      row.role = cur.role || 'peipei';
+      row.name = cur.name || '';
+      if (!row.note) row.note = cur.note || '';
+      state.items[pickTarget] = row;
+      renderItems(); renderSlip(); save();
+      closePrices();
+      toast('已选择：' + type + ' ' + fmtPrice(price) + '/' + (o[2] || '件'));
+      return;
+    }
     /* 只有一项空白时直接替换，不留空行 */
     if (state.items.length === 1 && last && !String(last.type || '').trim() && !String(last.amt || '').trim()) {
       row.name = last.name || '';
@@ -4063,13 +4128,14 @@ try { exports.GifWriter = GifWriter; exports.GifReader = GifReader } catch(e) {}
     when: toLocalInput(new Date()),
     cur: '¥',
     no: 'HP-206031',
-    items: [{ type: '王者 · 王者以下 技术', sub: 'WANG ZHE JI SHU', role: 'peipei', name: '栗子', note: '', qty: '3', amt: '45', up: 15, unit: '局' }],
+    items: [{ type: '', sub: '', role: 'peipei', name: '', note: '', qty: '1', amt: '' }],
     total: '',
     paid: '',
     discount: '1',
     balance: '1000',
+    hasCard: true,
     quote: '今天这份手气，记得带回家',
-    name: '小满',
+    name: '',
     tail: '',
     stampOn: true,
     stampText: 'May',
