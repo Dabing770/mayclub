@@ -19,7 +19,7 @@
   };
 
   /* 店名、盖章固定，不进存档 */
-  var CLUB_CN = 'May Club', CLUB_EN = 'MAY CLUB', LOGO_MARK = 'MC', STAMP_TEXT = 'May';
+  var CLUB_CN = 'May Club', LOGO_MARK = 'MC', STAMP_TEXT = 'May';
   var TICKET_TITLE = '玖璃专属结单小票';
   var SLOGAN = '按单结清 · 谢绝挂账';
 
@@ -453,7 +453,7 @@
       ? '<div class="tk-bglayer"><img src="' + esc(state.bgImg) + '" style="opacity:' + Number(state.bgOpacity) + '" alt="小票背景"></div>'
       : '';
     var fBrand = '<div class="tk-brand">' + logoBlock +
-      '<div class="tk-name"><h3>' + esc(TICKET_TITLE) + '</h3><p>' + esc(CLUB_EN) + '</p><em>' + esc(SLOGAN) + '</em></div></div>';
+      '<div class="tk-name"><h3>' + esc(CLUB_CN) + '</h3><p>' + esc(TICKET_TITLE) + '</p><em>' + esc(SLOGAN) + '</em></div></div>';
     var fMeta = '<div class="tk-meta"><span>SETTLEMENT · 结单凭证</span><span>NO. ' + esc(state.no) + '</span></div>';
     var heroImg = '<img src="' + esc(heroSrc) + '" style="' + heroStyle + '" alt="' + esc(heroName) + '">';
     var fHeroClassic = '<div class="tk-hero" style="background-image:url(' + gingham() + ')">' + heroImg + '<p>' + esc(heroName) + ' · CHARACTER</p></div>';
