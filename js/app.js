@@ -48,6 +48,11 @@
   }
   function needHtml2canvas() { return window.html2canvas ? Promise.resolve() : loadScript('js/vendor/html2canvas.min.js'); }
   function needGifEnc() { return window.GIFEnc ? Promise.resolve() : loadScript('js/vendor/gifenc.js'); }
+  function fixVideo(blob, ms) {
+    return (window.VidFix ? Promise.resolve() : loadScript('js/vidfix.js'))
+      .then(function () { return window.VidFix.fix(blob, ms); })
+      .catch(function () { return blob; });
+  }
   function needGifReader() { return typeof window.GifReader === 'function' ? Promise.resolve() : loadScript('js/vendor/omggif.js'); }
 
   /* ---------- 图片存储：原图 Blob 放 IndexedDB，localStorage 只存文字设置 ----------
@@ -1154,7 +1159,8 @@
   }
 
   /* 把「出纸 → 停一下 → 撕下」画在一张画布上，视频和动图共用 */
-  function makeStage(base, hero) {
+  function makeStage(base, hero, timing) {
+    timing = timing || {};
     var pw = base.width, ph = base.height;
     var mx = Math.round(pw * 0.09);
     var slotH = Math.round(pw * 0.08);
@@ -1167,7 +1173,8 @@
     var cv = document.createElement('canvas');
     cv.width = W; cv.height = H;
     var ctx = cv.getContext('2d');
-    var feed = 1500, hold = 420, tearMs = 860, tail = 320;
+    var feed = timing.feed || 1500, hold = timing.hold || 420,
+        tearMs = timing.tear || 860, tail = timing.tail || 320;
     var total = feed + hold + tearMs + tail;
 
     function draw(t) {
@@ -1254,13 +1261,17 @@
       return;
     }
     exporting = true;
-    toast('正在录视频，约 3 秒…');
+    toast('正在录视频，约 8 秒…');
     slipCanvas(2).then(function (base) {
       var hero = heroOverlay(2);
       if (hero && hero.gif) base.getContext('2d').clearRect(hero.x, hero.y, hero.w, hero.h);
-      var st = makeStage(base, hero);
-      /* 优先 MP4(H.264)，相册、微信、剪辑软件都能直接读；WebM 只作兜底 */
+      /* 视频比动图长：出纸放慢，撕下后多停几秒（GIF 角色继续动、BGM 继续放），共约 8 秒 */
+      var st = makeStage(base, hero, { feed: 2400, hold: 900, tear: 900, tail: 3800 });
+      /* 优先 MP4(H.264)，相册、微信、剪辑软件都能直接读；WebM 只作兜底。
+         音乐优先 AAC(mp4a.40.2)：Chrome 默认给 MP4 配 Opus，旧 iPhone 等会没声音或打不开 */
       var mimes = [
+        'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
+        'video/mp4;codecs=avc1,mp4a.40.2',
         'video/mp4;codecs=avc1.42E01E',
         'video/mp4;codecs=avc1',
         'video/mp4',
@@ -1278,11 +1289,15 @@
       rec.ondataavailable = function (ev) { if (ev.data && ev.data.size) chunks.push(ev.data); };
       rec.onstop = function () {
         stopBgmForRecord();
-        var mp4 = mime.indexOf('mp4') > -1;
-        showSave(new Blob(chunks, { type: mime }), '小票-' + (state.no || 'receipt') + (mp4 ? '.mp4' : '.webm'), 'video');
-        toast(mp4 ? '视频好了，点保存到相册' : '视频好了，长按存进相册');
         st.canvas.width = st.canvas.height = 0;
-        exporting = false;
+        var mp4 = mime.indexOf('mp4') > -1;
+        var recMs = performance.now() - t0;
+        /* 录出来的文件不带正确时长，别人下载后相册会显示 0 秒；先修好再给保存 */
+        fixVideo(new Blob(chunks, { type: mime }), recMs).then(function (blob) {
+          showSave(blob, '小票-' + (state.no || 'receipt') + (mp4 ? '.mp4' : '.webm'), 'video');
+          toast(mp4 ? '视频好了，点保存到相册' : '视频好了，长按存进相册');
+          exporting = false;
+        });
       };
       rec.start();
       var t0 = performance.now();
